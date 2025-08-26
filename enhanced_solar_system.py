@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 增强版太阳系模拟器
-整合动态优化和基本渲染
+整合背景抠图、动态优化和逼真效果
 """
 
 import pygame
@@ -17,6 +17,7 @@ import os
 
 # 导入自定义模块
 from enhanced_renderer import EnhancedRenderer
+from advanced_texture_manager import AdvancedTextureManager
 import config
 
 
@@ -30,7 +31,7 @@ class EnhancedSolarSystem:
         self.width = config.SCREEN_WIDTH
         self.height = config.SCREEN_HEIGHT
         self.display = pygame.display.set_mode((self.width, self.height), DOUBLEBUF | OPENGL)
-        pygame.display.set_caption("增强版太阳系模拟器 - 动态优化 + 基本渲染")
+        pygame.display.set_caption("增强版太阳系模拟器 - 背景抠图 + 动态优化 + 逼真效果")
         
         # 初始化渲染器
         self.renderer = EnhancedRenderer()
@@ -63,9 +64,12 @@ class EnhancedSolarSystem:
         
         print("增强版太阳系模拟器初始化完成！")
         print("功能特性：")
+        print("- 背景抠图处理")
         print("- 动态LOD优化")
-        print("- 基本光照效果")
-        print("- 天体颜色渲染")
+        print("- 逼真光照效果")
+        print("- 大气层渲染")
+        print("- 粒子特效")
+        print("- 自适应质量")
         print("- 鼠标自由观察")
         print("- 无限制缩放")
     
@@ -94,119 +98,138 @@ class EnhancedSolarSystem:
             # 检查关键扩展支持
             extensions = glGetString(GL_EXTENSIONS).decode().split()
             if 'GL_EXT_texture_filter_anisotropic' in extensions:
-                print("支持各向异性过滤")
+                print("✓ 支持各向异性过滤")
             else:
-                print("不支持各向异性过滤")
+                print("⚠ 不支持各向异性过滤")
                 
         except Exception as e:
             print(f"OpenGL设置失败: {e}")
-            sys.exit(1)
+            print("尝试使用基本设置...")
+            # 基本设置
+            glViewport(0, 0, self.width, self.height)
+            glMatrixMode(GL_PROJECTION)
+            glLoadIdentity()
+            gluPerspective(45, (self.width / self.height), 0.1, 1000.0)
+            glMatrixMode(GL_MODELVIEW)
+            glEnable(GL_DEPTH_TEST)
     
     def _initialize_celestial_bodies(self):
-        """初始化天体数据"""
-        return {
+        """初始化天体数据 - 按照真实太阳系排列和比例"""
+        bodies = {
             "sun": {
                 "position": [0, 0, 0],
-                "radius": 15.0,
-                "rotation_speed": 2.0,
-                "orbit_radius": 0,
+                "radius": 20.0,  # 太阳作为参考基准
+                "rotation_speed": 0.3,  # 太阳自转较慢
+                "orbit_radius": 0,  # 太阳在中心
                 "orbit_speed": 0,
                 "texture": "sun",
                 "has_atmosphere": False,
-                "has_particles": False
+                "has_particles": False,  # 关闭粒子效果，避免光晕
+                "is_center": True
             },
             "mercury": {
                 "position": [0, 0, 0],
-                "radius": 3.0,
-                "rotation_speed": 1.0,
-                "orbit_radius": 50.0,
-                "orbit_speed": 0.5,
+                "radius": 1.4,  # 水星：太阳的1/14.3，实际最小行星
+                "rotation_speed": 1.2,  # 水星自转较快
+                "orbit_radius": 35.0,  # 最近
+                "orbit_speed": 1.0,  # 公转最快
                 "texture": "mercury",
                 "has_atmosphere": False,
-                "has_particles": False
+                "has_particles": False,
+                "is_center": False
             },
             "venus": {
                 "position": [0, 0, 0],
-                "radius": 4.0,
-                "rotation_speed": 0.8,
-                "orbit_radius": 80.0,
-                "orbit_speed": 0.3,
+                "radius": 3.5,  # 金星：太阳的1/5.7，实际大小接近地球
+                "rotation_speed": 0.8,  # 金星自转很慢
+                "orbit_radius": 55.0,  # 第二近
+                "orbit_speed": 0.8,  # 公转较快
                 "texture": "venus",
-                "has_atmosphere": False,
-                "has_particles": False
+                "has_atmosphere": True,
+                "has_particles": False,
+                "is_center": False
             },
             "earth": {
                 "position": [0, 0, 0],
-                "radius": 5.0,
-                "rotation_speed": 1.0,
-                "orbit_radius": 120.0,
-                "orbit_speed": 0.2,
+                "radius": 3.7,  # 地球：太阳的1/5.4，实际大小
+                "rotation_speed": 1.0,  # 地球自转
+                "orbit_radius": 75.0,  # 第三近
+                "orbit_speed": 0.6,  # 公转
                 "texture": "earth",
-                "has_atmosphere": False,
-                "has_particles": False
-            },
-            "mars": {
-                "position": [0, 0, 0],
-                "radius": 3.5,
-                "rotation_speed": 0.9,
-                "orbit_radius": 160.0,
-                "orbit_speed": 0.15,
-                "texture": "mars",
-                "has_atmosphere": False,
-                "has_particles": False
-            },
-            "jupiter": {
-                "position": [0, 0, 0],
-                "radius": 12.0,
-                "rotation_speed": 0.5,
-                "orbit_radius": 220.0,
-                "orbit_speed": 0.1,
-                "texture": "jupiter",
-                "has_atmosphere": False,
-                "has_particles": False
-            },
-            "saturn": {
-                "position": [0, 0, 0],
-                "radius": 10.0,
-                "rotation_speed": 0.6,
-                "orbit_radius": 280.0,
-                "orbit_speed": 0.08,
-                "texture": "saturn",
-                "has_atmosphere": False,
-                "has_particles": False
-            },
-            "uranus": {
-                "position": [0, 0, 0],
-                "radius": 7.0,
-                "rotation_speed": 0.7,
-                "orbit_radius": 340.0,
-                "orbit_speed": 0.06,
-                "texture": "uranus",
-                "has_atmosphere": False,
-                "has_particles": False
-            },
-            "neptune": {
-                "position": [0, 0, 0],
-                "radius": 6.5,
-                "rotation_speed": 0.8,
-                "orbit_radius": 400.0,
-                "orbit_speed": 0.05,
-                "texture": "neptune",
-                "has_atmosphere": False,
-                "has_particles": False
+                "has_atmosphere": True,
+                "has_particles": True,
+                "is_center": False
             },
             "moon": {
                 "position": [0, 0, 0],
-                "radius": 1.5,
-                "rotation_speed": 0.5,
-                "orbit_radius": 8.0,
-                "orbit_speed": 0.2,
+                "radius": 0.9,  # 月球：地球的1/4.1，实际比例
+                "rotation_speed": 0.5,  # 月球自转很慢
+                "orbit_radius": 8.0,  # 围绕地球公转
+                "orbit_speed": 1.5,  # 月球公转较快
                 "texture": "moon",
                 "has_atmosphere": False,
                 "has_particles": False,
-                "parent": "earth"
+                "is_center": False,
+                "parent": "earth"  # 月球围绕地球
+            },
+            "mars": {
+                "position": [0, 0, 0],
+                "radius": 2.0,  # 火星：太阳的1/10，实际大小
+                "rotation_speed": 0.9,  # 火星自转
+                "orbit_radius": 95.0,  # 第四近
+                "orbit_speed": 0.5,  # 公转
+                "texture": "mars",
+                "has_atmosphere": True,
+                "has_particles": False,
+                "is_center": False
+            },
+            "jupiter": {
+                "position": [0, 0, 0],
+                "radius": 12.0,  # 木星：太阳的1/1.7，实际最大行星
+                "rotation_speed": 2.5,  # 木星自转很快
+                "orbit_radius": 140.0,  # 第五近
+                "orbit_speed": 0.3,  # 公转较慢
+                "texture": "jupiter",
+                "has_atmosphere": True,
+                "has_particles": False,
+                "is_center": False
+            },
+            "saturn": {
+                "position": [0, 0, 0],
+                "radius": 10.0,  # 土星：太阳的1/2，实际第二大行星
+                "rotation_speed": 2.0,  # 土星自转快
+                "orbit_radius": 190.0,  # 第六近
+                "orbit_speed": 0.2,  # 公转慢
+                "texture": "saturn",
+                "has_atmosphere": True,
+                "has_particles": False,
+                "is_center": False
+            },
+            "uranus": {
+                "position": [0, 0, 0],
+                "radius": 7.0,  # 天王星：太阳的1/2.9，实际大小
+                "rotation_speed": 1.8,  # 天王星自转
+                "orbit_radius": 250.0,  # 第七近
+                "orbit_speed": 0.15,  # 公转很慢
+                "texture": "uranus",
+                "has_atmosphere": False,
+                "has_particles": False,
+                "is_center": False
+            },
+            "neptune": {
+                "position": [0, 0, 0],
+                "radius": 6.8,  # 海王星：太阳的1/2.9，实际大小接近天王星
+                "rotation_speed": 1.9,  # 海王星自转
+                "orbit_radius": 320.0,  # 最远
+                "orbit_speed": 0.12,  # 公转最慢
+                "texture": "neptune",
+                "has_atmosphere": False,
+                "has_particles": False,
+                "is_center": False
             }
         }
+        
+        return bodies
     
     def _update_celestial_positions(self):
         """更新天体位置 - 包括月球围绕地球公转"""
@@ -249,6 +272,9 @@ class EnhancedSolarSystem:
                     self.time_speed = min(5.0, self.time_speed + 0.5)
                 elif event.key == pygame.K_DOWN:
                     self.time_speed = max(0.0, self.time_speed - 0.5)
+                elif event.key == pygame.K_q:
+                    self.renderer.set_adaptive_quality(not self.renderer.adaptive_quality)
+                    print(f"自适应质量: {'开启' if self.renderer.adaptive_quality else '关闭'}")
             
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:  # 鼠标左键
@@ -324,7 +350,7 @@ class EnhancedSolarSystem:
             sun_distance = math.sqrt(sum((sun["position"][i] - camera_pos[i]) ** 2 for i in range(3)))
             
             self.renderer.render_celestial_body(
-                "sun",
+                sun["texture"],
                 sun["position"],
                 sun["radius"],
                 self.current_time * sun["rotation_speed"],
@@ -359,7 +385,7 @@ class EnhancedSolarSystem:
                 
                 # 渲染天体主体
                 self.renderer.render_celestial_body(
-                    body_name,
+                    body["texture"],
                     body["position"],
                     body["radius"],
                     self.current_time * body["rotation_speed"],  # 自转
@@ -374,16 +400,16 @@ class EnhancedSolarSystem:
                 # 渲染大气效果
                 if body["has_atmosphere"]:
                     self.renderer.render_atmosphere_effects(
-                        body_name,
+                        body["texture"],
                         body["position"],
                         body["radius"],
                         distance
                     )
                 
                 # 渲染粒子效果
-                if body["has_atmosphere"]:
+                if body["has_particles"]:
                     self.renderer.render_particle_effects(
-                        body_name,
+                        body["texture"],
                         body["position"],
                         body["radius"],
                         distance
@@ -432,6 +458,13 @@ class EnhancedSolarSystem:
             text_surface = info_font.render(text, True, (200, 255, 200))
             self.display.blit(text_surface, (10, 130 + i * 25))
         
+        # 自适应质量状态
+        quality_text = font.render(
+            f"自适应质量: {'开启' if self.renderer.adaptive_quality else '关闭'}", 
+            True, (255, 255, 255)
+        )
+        self.display.blit(quality_text, (10, 220))
+        
         # 控制说明
         controls_font = pygame.font.Font(None, 24)
         controls = [
@@ -441,6 +474,7 @@ class EnhancedSolarSystem:
             "鼠标滚轮 - 无限制缩放",
             "空格 - 暂停/继续",
             "上下箭头 - 调整时间速度",
+            "Q - 切换自适应质量",
             "ESC - 退出"
         ]
         
@@ -511,15 +545,18 @@ class EnhancedSolarSystem:
         running = True
         clock = pygame.time.Clock()
         
-        # 初始化完成
-        print("初始化完成，开始运行...")
+        # 等待纹理预处理完成
+        print("等待纹理预处理完成...")
+        time.sleep(2)  # 给异步处理一些时间
         
         try:
             while running:
                 # 处理输入
                 running = self._handle_input()
                 
-
+                # 处理纹理队列（在主线程中）
+                if hasattr(self.renderer, 'texture_manager') and hasattr(self.renderer.texture_manager, 'process_queue'):
+                    self.renderer.texture_manager.process_queue()
                 
                 # 更新时间
                 self.current_time += self.time_speed * 0.01
@@ -560,7 +597,9 @@ class EnhancedSolarSystem:
 if __name__ == "__main__":
     try:
         # 检查依赖
-        print("依赖包检查通过")
+        import cv2
+        import PIL
+        print("所有依赖包检查通过")
         
         # 运行模拟器
         simulator = EnhancedSolarSystem()
