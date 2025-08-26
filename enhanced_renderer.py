@@ -150,6 +150,124 @@ class EnhancedRenderer:
         """获取当前FPS"""
         return self.current_fps
     
+    def get_current_fps(self):
+        """获取当前FPS（兼容性方法）"""
+        return self.current_fps
+    
+    def render_starfield(self, center_position):
+        """渲染星空背景"""
+        # 禁用光照和深度测试，确保星空在最底层
+        glDisable(GL_LIGHTING)
+        glDisable(GL_DEPTH_TEST)
+        
+        # 保存当前矩阵
+        glPushMatrix()
+        
+        # 移动到中心位置
+        glTranslatef(center_position[0], center_position[1], center_position[2])
+        
+        # 设置星空颜色（白色小点）
+        glColor3f(1.0, 1.0, 1.0)
+        
+        # 渲染随机分布的星星
+        glBegin(GL_POINTS)
+        for i in range(1000):  # 1000颗星星
+            # 在球面上随机分布
+            phi = np.random.uniform(0, 2 * np.pi)
+            theta = np.arccos(np.random.uniform(-1, 1))
+            
+            # 转换为笛卡尔坐标
+            x = 1000 * np.sin(theta) * np.cos(phi)
+            y = 1000 * np.sin(theta) * np.sin(phi)
+            z = 1000 * np.cos(theta)
+            
+            glVertex3f(x, y, z)
+        glEnd()
+        
+        # 恢复颜色
+        glColor3f(1.0, 1.0, 1.0)
+        
+        # 恢复矩阵
+        glPopMatrix()
+        
+        # 重新启用光照和深度测试
+        glEnable(GL_LIGHTING)
+        glEnable(GL_DEPTH_TEST)
+    
+    def update_lighting(self, sun_position):
+        """更新光照位置（太阳位置）"""
+        self.light_position = list(sun_position)
+        glLightfv(GL_LIGHT0, GL_POSITION, self.light_position)
+    
+    def render_atmosphere_effects(self, body_name, position, radius, distance):
+        """渲染大气效果"""
+        # 简化的大气效果 - 渲染一个半透明的球体
+        glEnable(GL_BLEND)
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        
+        # 保存当前矩阵
+        glPushMatrix()
+        
+        # 移动到天体位置
+        glTranslatef(position[0], position[1], position[2])
+        
+        # 设置大气颜色（根据天体类型）
+        if body_name == "earth":
+            glColor4f(0.5, 0.8, 1.0, 0.1)  # 地球蓝色大气
+        elif body_name == "venus":
+            glColor4f(1.0, 0.8, 0.5, 0.2)  # 金星橙色大气
+        else:
+            glColor4f(0.8, 0.8, 0.8, 0.1)  # 默认灰色大气
+        
+        # 渲染稍大的球体作为大气
+        self._render_sphere(radius * 1.1, 16)
+        
+        # 恢复颜色
+        glColor3f(1.0, 1.0, 1.0)
+        
+        # 恢复矩阵
+        glPopMatrix()
+        
+        glDisable(GL_BLEND)
+    
+    def render_particle_effects(self, body_name, position, radius, distance):
+        """渲染粒子效果"""
+        # 简化的粒子效果 - 渲染一些随机点
+        if body_name == "saturn":
+            # 土星环效果
+            glEnable(GL_BLEND)
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+            
+            glPushMatrix()
+            glTranslatef(position[0], position[1], position[2])
+            
+            # 设置环的颜色
+            glColor4f(0.8, 0.7, 0.5, 0.6)  # 土星环颜色
+            
+            # 渲染简单的环
+            glBegin(GL_QUADS)
+            ring_radius = radius * 1.5
+            ring_thickness = radius * 0.1
+            
+            for i in range(32):
+                angle1 = i * 2 * np.pi / 32
+                angle2 = (i + 1) * 2 * np.pi / 32
+                
+                x1 = ring_radius * np.cos(angle1)
+                z1 = ring_radius * np.sin(angle1)
+                x2 = ring_radius * np.cos(angle2)
+                z2 = ring_radius * np.sin(angle2)
+                
+                glVertex3f(x1, -ring_thickness/2, z1)
+                glVertex3f(x2, -ring_thickness/2, z2)
+                glVertex3f(x2, ring_thickness/2, z2)
+                glVertex3f(x1, ring_thickness/2, z1)
+            glEnd()
+            
+            glColor3f(1.0, 1.0, 1.0)
+            glPopMatrix()
+            glDisable(GL_BLEND)
+    
     def cleanup(self):
         """清理资源"""
         # 清理OpenGL状态

@@ -324,7 +324,7 @@ class EnhancedSolarSystem:
             sun_distance = math.sqrt(sum((sun["position"][i] - camera_pos[i]) ** 2 for i in range(3)))
             
             self.renderer.render_celestial_body(
-                sun["texture"],
+                "sun",
                 sun["position"],
                 sun["radius"],
                 self.current_time * sun["rotation_speed"],
@@ -359,7 +359,7 @@ class EnhancedSolarSystem:
                 
                 # 渲染天体主体
                 self.renderer.render_celestial_body(
-                    body["texture"],
+                    body_name,
                     body["position"],
                     body["radius"],
                     self.current_time * body["rotation_speed"],  # 自转
@@ -374,16 +374,16 @@ class EnhancedSolarSystem:
                 # 渲染大气效果
                 if body["has_atmosphere"]:
                     self.renderer.render_atmosphere_effects(
-                        body["texture"],
+                        body_name,
                         body["position"],
                         body["radius"],
                         distance
                     )
                 
                 # 渲染粒子效果
-                if body["has_particles"]:
+                if body["has_atmosphere"]:
                     self.renderer.render_particle_effects(
-                        body["texture"],
+                        body_name,
                         body["position"],
                         body["radius"],
                         distance
